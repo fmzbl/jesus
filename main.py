@@ -7,6 +7,7 @@ Stop reading: "stop"
 End session:  "Jesus stop conversation"
 """
 
+import io
 import json
 import queue
 import struct
@@ -29,6 +30,7 @@ from ddgs import DDGS
 
 WAKE_PHRASES      = {"jesus"}
 END_PHRASES       = {"jesus stop"}
+RESTART_PHRASES   = {"jesus stop conversation"}
 STOP_WORD         = "stop"
 ENERGY_THRESHOLD  = 50     # RMS below this is treated as silence
 SILENCE_TIMEOUT   = 1.5    # seconds of silence after speech before forcing final result
@@ -189,21 +191,25 @@ class TTS:
             self._play_espeak(text)
 
     def _play_piper(self, text: str):
-        stream = self._pa.open(
-            format=pyaudio.paInt16,
-            channels=1,
-            rate=self._piper_voice.config.sample_rate,
-            output=True,
-        )
-        try:
-            for chunk in self._piper_voice.synthesize(text):
-                if self._stop.is_set():
-                    break
-                audio_int16 = (chunk.audio_float_array * 32767).astype(np.int16)
-                stream.write(audio_int16.tobytes())
-        finally:
-            stream.stop_stream()
-            stream.close()
+        buf = io.BytesIO()
+        with wave.open(buf, "wb") as wf:
+            self._piper_voice.synthesize_wav(text, wf)
+        buf.seek(0)
+        with wave.open(buf, "rb") as wf:
+            stream = self._pa.open(
+                format=self._pa.get_format_from_width(wf.getsampwidth()),
+                channels=wf.getnchannels(),
+                rate=wf.getframerate(),
+                output=True,
+            )
+            try:
+                chunk = wf.readframes(1024)
+                while chunk and not self._stop.is_set():
+                    stream.write(chunk)
+                    chunk = wf.readframes(1024)
+            finally:
+                stream.stop_stream()
+                stream.close()
 
     def _play_espeak(self, text: str):
         voice = self._cfg.get("tts_voice", "en")
@@ -241,6 +247,19 @@ class TTS:
     def wait(self):
         if self._thread:
             self._thread.join()
+
+    def beep(self, freq: float = 880.0, duration: float = 0.12):
+        """Play a short sine-wave tone (blocking)."""
+        rate = 22050
+        n = int(rate * duration)
+        t = np.linspace(0, duration, n, endpoint=False)
+        data = (np.sin(2 * np.pi * freq * t) * 0.4 * 32767).astype(np.int16)
+        stream = self._pa.open(format=pyaudio.paInt16, channels=1, rate=rate, output=True)
+        try:
+            stream.write(data.tobytes())
+        finally:
+            stream.stop_stream()
+            stream.close()
 
     @property
     def busy(self) -> bool:
@@ -302,7 +321,7 @@ def llm_chat(model: str, messages: list) -> str:
         if tc.function.name == "web_search":
             q = tc.function.arguments.get("query", "")
             print(f"  [web search: {q}]")
-            followup.append({"role": "tool", "content": do_web_search(q)})
+            followup.append({"role": "tool", "tool_name": "web_search", "content": do_web_search(q)})
 
     final = ollama.chat(model=model, messages=followup)
     return final.message.content or ""
@@ -383,8 +402,12 @@ class Jesus:
     # ── Listen until speech ends ───────────────────────────────────────────────
 
     def listen(self) -> str:
+        fresh = True
         while True:
             self.mic.drain()
+            if fresh:
+                self.tts.beep(freq=880, duration=0.12)
+            fresh = False
             print("\n  [listening...]", end="", flush=True)
 
             frames: list[bytes] = []
@@ -425,6 +448,7 @@ class Jesus:
             print("\r  [transcribing...]", end="", flush=True)
             text = self.stt.transcribe(b"".join(frames))
             if text:
+                self.tts.beep(freq=660, duration=0.12)
                 print(f"\r  You: {text}          ")
                 return text
             print("\r  [didn't catch that, listening again...]", end="", flush=True)
@@ -443,18 +467,62 @@ class Jesus:
             if not text:
                 continue
 
+            if any(p in text for p in RESTART_PHRASES):
+                self.say("Sure, starting a new conversation.")
+                return True
+
             if any(p in text for p in END_PHRASES):
                 self.say("Got it. I'll be here if you need me.")
-                break
+                return False
+
+            # Bare "stop" — user interrupted, don't send to LLM
+            if text.strip() == STOP_WORD:
+                continue
 
             self.conv.add("user", text)
             messages = [{"role": "system", "content": SYSTEM_PROMPT}, *self.conv.for_llm()]
 
             print("Thinking...")
-            try:
-                answer = llm_chat(self.cfg.get("model"), messages)
-            except Exception as e:
-                answer = f"Sorry, I ran into an error: {e}"
+            result_box: list = [None]
+            error_box:  list = [None]
+
+            def _think():
+                try:
+                    result_box[0] = llm_chat(self.cfg.get("model"), messages)
+                except Exception as e:
+                    error_box[0] = e
+
+            t = threading.Thread(target=_think, daemon=True)
+            t.start()
+
+            # Monitor mic for "stop" while LLM / web-search is running
+            self.mic.drain()
+            frames: list[bytes] = []
+            last_check = time.time()
+            cancelled = False
+
+            while t.is_alive():
+                chunk = self.mic.read(timeout=0.1)
+                if chunk is None:
+                    continue
+                frames.append(chunk)
+                if time.time() - last_check >= 1.5:
+                    heard = self.stt.transcribe(b"".join(frames))
+                    frames = []
+                    last_check = time.time()
+                    if STOP_WORD in heard:
+                        print("[cancelled]")
+                        cancelled = True
+                        break
+
+            if cancelled:
+                self.mic.drain()
+                continue
+
+            if error_box[0]:
+                answer = f"Sorry, I ran into an error: {error_box[0]}"
+            else:
+                answer = result_box[0] or ""
 
             self.conv.add("assistant", answer)
             self.say(answer)
@@ -468,7 +536,8 @@ class Jesus:
                 text = self.listen()
                 if any(p in text for p in WAKE_PHRASES):
                     print("[wake phrase detected]")
-                    self.converse()
+                    while self.converse():
+                        pass
                     print("\nStandby — say 'Jesus'\n")
         except KeyboardInterrupt:
             print("\nShutting down.")
