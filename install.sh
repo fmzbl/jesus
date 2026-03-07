@@ -6,6 +6,13 @@ cd "$(dirname "$0")"
 echo "Installing system dependencies..."
 sudo apt install -y python3-dev portaudio19-dev espeak-ng
 
+echo "Installing Ollama..."
+if ! command -v ollama &> /dev/null; then
+    curl -fsSL https://ollama.com/install.sh | sh
+else
+    echo "Ollama already installed, skipping."
+fi
+
 if [ ! -d "venv" ]; then
     echo "Creating virtual environment..."
     python3 -m venv venv
