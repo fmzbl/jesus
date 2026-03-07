@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Sophia - Voice Assistant for Raspberry Pi
+Jesus - Voice Assistant for Raspberry Pi
 
-Wake:         "Sophia start conversation"
+Wake:         "Jesus start conversation"
 Stop reading: "stop"
-End session:  "Sophia stop conversation"
+End session:  "Jesus stop conversation"
 """
 
 import json
@@ -27,8 +27,8 @@ from ddgs import DDGS
 
 # ── Constants ──────────────────────────────────────────────────────────────────
 
-WAKE_PHRASES      = {"sophia", "sofia"}
-END_PHRASES       = {"sophia stop", "sofia stop"}
+WAKE_PHRASES      = {"jesus"}
+END_PHRASES       = {"jesus stop"}
 STOP_WORD         = "stop"
 ENERGY_THRESHOLD  = 50     # RMS below this is treated as silence
 SILENCE_TIMEOUT   = 1.5    # seconds of silence after speech before forcing final result
@@ -54,7 +54,7 @@ DEFAULT_CONFIG = {
 }
 
 SYSTEM_PROMPT = (
-    "You are Sophia, a helpful voice assistant. "
+    "You are Jesus, a helpful voice assistant. "
     "Respond naturally and concisely since your replies will be read aloud. "
     "Avoid markdown formatting, bullet points, or special characters. "
     "Use plain, conversational language."
@@ -337,11 +337,11 @@ class ConvLog:
             with open(self._path, "w") as f:
                 json.dump({"messages": self._msgs}, f, indent=2, ensure_ascii=False)
 
-# ── Sophia ──────────────────────────────────────────────────────────────────────
+# ── Jesus ───────────────────────────────────────────────────────────────────────
 
-class Sophia:
+class Jesus:
     def __init__(self):
-        print("Starting Sophia...")
+        print("Starting Jesus...")
         self.cfg  = Config()
         self.tts  = TTS(self.cfg)
         self.conv = ConvLog()
@@ -358,7 +358,7 @@ class Sophia:
     # ── Speak, interruptible by "stop" ────────────────────────────────────────
 
     def say(self, text: str):
-        print(f"\nSophia: {text}")
+        print(f"\nJesus: {text}")
         self.tts.speak(text)
         self.mic.drain()
 
@@ -462,14 +462,14 @@ class Sophia:
     # ── Standby loop ──────────────────────────────────────────────────────────
 
     def run(self):
-        print("\nReady — say 'Sophia'\n")
+        print("\nReady — say 'Jesus'\n")
         try:
             while True:
                 text = self.listen()
                 if any(p in text for p in WAKE_PHRASES):
                     print("[wake phrase detected]")
                     self.converse()
-                    print("\nStandby — say 'Sophia'\n")
+                    print("\nStandby — say 'Jesus'\n")
         except KeyboardInterrupt:
             print("\nShutting down.")
         finally:
@@ -479,4 +479,4 @@ class Sophia:
 # ── Entry point ────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    Sophia().run()
+    Jesus().run()
