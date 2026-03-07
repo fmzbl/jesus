@@ -8,9 +8,9 @@
     "mistral:7b"
   ],
   "tts_engine": "piper",
-  "tts_voice": "en+f3",
+  "tts_voice": "en",
   "speech_rate": 150,
-  "piper_model": "en_US-amy-medium",
+  "piper_model": "en_US-ryan-high",
   "user_name": "Facu",
   "whisper_model": "small",
   "sample_rate": 16000

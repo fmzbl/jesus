@@ -44,10 +44,10 @@ DEFAULT_CONFIG = {
         "gemma2:2b",
         "mistral:7b",
     ],
-    "tts_engine": "espeak",        # "espeak" or "piper"
+    "tts_engine": "piper",         # "espeak" or "piper"
     "tts_voice": "en",
     "speech_rate": 150,
-    "piper_model": "en_US-amy-medium",
+    "piper_model": "en_US-ryan-high",
     "user_name": "Facu",
     "whisper_model": "small",
     "sample_rate": 16000,
@@ -166,6 +166,15 @@ class TTS:
         self._pa    = pyaudio.PyAudio()
         self._thread: threading.Thread | None = None
         self._stop  = threading.Event()
+        self._piper_voice = None
+
+        if config.get("tts_engine") == "piper":
+            from piper import PiperVoice
+            model_name = config.get("piper_model", "en_US-ryan-high")
+            model_path = Path(f"{model_name}.onnx")
+            print(f"Loading Piper voice '{model_name}'...")
+            self._piper_voice = PiperVoice.load(model_path)
+            print("Piper ready.")
 
     def speak(self, text: str):
         self.stop()
@@ -174,6 +183,29 @@ class TTS:
         self._thread.start()
 
     def _play(self, text: str):
+        if self._piper_voice is not None:
+            self._play_piper(text)
+        else:
+            self._play_espeak(text)
+
+    def _play_piper(self, text: str):
+        stream = self._pa.open(
+            format=pyaudio.paInt16,
+            channels=1,
+            rate=self._piper_voice.config.sample_rate,
+            output=True,
+        )
+        try:
+            for chunk in self._piper_voice.synthesize(text):
+                if self._stop.is_set():
+                    break
+                audio_int16 = (chunk.audio_float_array * 32767).astype(np.int16)
+                stream.write(audio_int16.tobytes())
+        finally:
+            stream.stop_stream()
+            stream.close()
+
+    def _play_espeak(self, text: str):
         voice = self._cfg.get("tts_voice", "en")
         speed = self._cfg.get("speech_rate", 150)
         tmpwav = tempfile.mktemp(suffix=".wav")

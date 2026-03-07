@@ -3,3 +3,4 @@ numpy
 pyaudio
 ollama
 ddgs
+piper-tts

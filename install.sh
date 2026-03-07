@@ -14,4 +14,13 @@ fi
 echo "Installing Python dependencies..."
 venv/bin/pip install -r requirements.txt
 
+PIPER_MODEL="en_US-ryan-high"
+PIPER_BASE="https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_US/ryan/high"
+
+if [ ! -f "${PIPER_MODEL}.onnx" ]; then
+    echo "Downloading Piper voice model '${PIPER_MODEL}'..."
+    wget -q --show-progress -O "${PIPER_MODEL}.onnx" "${PIPER_BASE}/${PIPER_MODEL}.onnx"
+    wget -q -O "${PIPER_MODEL}.onnx.json" "${PIPER_BASE}/${PIPER_MODEL}.onnx.json"
+fi
+
 echo "Done. Run ./run.sh to start Sofia."
