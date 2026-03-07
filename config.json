@@ -1,0 +1,17 @@
+{
+  "model": "llama3.2:3b",
+  "available_models": [
+    "llama3.2:1b",
+    "llama3.2:3b",
+    "phi3:mini",
+    "gemma2:2b",
+    "mistral:7b"
+  ],
+  "tts_engine": "piper",
+  "tts_voice": "en+f3",
+  "speech_rate": 150,
+  "piper_model": "en_US-amy-medium",
+  "user_name": "Facu",
+  "whisper_model": "small",
+  "sample_rate": 16000
+}
