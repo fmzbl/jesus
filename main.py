@@ -20,6 +20,7 @@ import wave
 from datetime import datetime
 from pathlib import Path
 
+import re
 import numpy as np
 import pyaudio
 from faster_whisper import WhisperModel
@@ -158,7 +159,8 @@ class STT:
         segments, _ = self._model.transcribe(
             audio, language="en", beam_size=5, vad_filter=True
         )
-        return " ".join(seg.text for seg in segments).strip().lower()
+        text = " ".join(seg.text for seg in segments).strip().lower()
+        return re.sub(r"[^\w\s]", "", text)
 
 # ── Text-to-speech ─────────────────────────────────────────────────────────────
 
@@ -401,11 +403,11 @@ class Jesus:
 
     # ── Listen until speech ends ───────────────────────────────────────────────
 
-    def listen(self) -> str:
+    def listen(self, beep: bool = True) -> str:
         fresh = True
         while True:
             self.mic.drain()
-            if fresh:
+            if fresh and beep:
                 self.tts.beep(freq=880, duration=0.12)
             fresh = False
             print("\n  [listening...]", end="", flush=True)
@@ -448,7 +450,8 @@ class Jesus:
             print("\r  [transcribing...]", end="", flush=True)
             text = self.stt.transcribe(b"".join(frames))
             if text:
-                self.tts.beep(freq=660, duration=0.12)
+                if beep:
+                    self.tts.beep(freq=660, duration=0.12)
                 print(f"\r  You: {text}          ")
                 return text
             print("\r  [didn't catch that, listening again...]", end="", flush=True)
@@ -460,7 +463,7 @@ class Jesus:
         self.conv.new_session()
         self.mic.drain()
         name = self.cfg.get("user_name", "Facu")
-        self.say(f"Hello {name}, tell me.")
+        self.say("Hello.")
 
         while True:
             text = self.listen()
@@ -533,8 +536,9 @@ class Jesus:
         print("\nReady — say 'Jesus'\n")
         try:
             while True:
-                text = self.listen()
+                text = self.listen(beep=False)
                 if any(p in text for p in WAKE_PHRASES):
+                    self.tts.beep(freq=880, duration=0.12)
                     print("[wake phrase detected]")
                     while self.converse():
                         pass

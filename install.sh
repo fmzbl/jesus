@@ -13,6 +13,9 @@ else
     echo "Ollama already installed, skipping."
 fi
 
+echo "Pulling Ollama model..."
+ollama pull llama3.2:3b
+
 if [ ! -d "venv" ]; then
     echo "Creating virtual environment..."
     python3 -m venv venv
