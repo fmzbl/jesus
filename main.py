@@ -434,6 +434,7 @@ class Jesus:
             messages = [{"role": "system", "content": SYSTEM_PROMPT}, *self.conv.for_llm()]
 
             print("Thinking...")
+            self.say("let me think")
             result_box: list = [None]
             error_box:  list = [None]
 
