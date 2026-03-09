@@ -463,7 +463,7 @@ class Jesus:
         self.conv.new_session()
         self.mic.drain()
         name = self.cfg.get("user_name", "Facu")
-        self.say("Hello.")
+        self.say("Hello son, what is it")
 
         while True:
             text = self.listen()
