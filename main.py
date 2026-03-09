@@ -25,7 +25,6 @@ import numpy as np
 import pyaudio
 from faster_whisper import WhisperModel
 import ollama
-from ddgs import DDGS
 
 # ── Constants ──────────────────────────────────────────────────────────────────
 
@@ -271,62 +270,11 @@ class TTS:
         self.stop()
         self._pa.terminate()
 
-# ── Web search ─────────────────────────────────────────────────────────────────
-
-def do_web_search(query: str, n: int = 3) -> str:
-    try:
-        with DDGS() as ddgs:
-            hits = list(ddgs.text(query, max_results=n))
-        if not hits:
-            return "No results found."
-        lines = []
-        for h in hits:
-            lines += [
-                f"Title: {h.get('title', '')}",
-                f"Summary: {h.get('body', '')}",
-                "",
-            ]
-        return "\n".join(lines)
-    except Exception as e:
-        return f"Search failed: {e}"
-
-TOOLS = [
-    {
-        "type": "function",
-        "function": {
-            "name": "web_search",
-            "description": "Search the web for current information, news, or facts.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "query": {"type": "string", "description": "The search query"},
-                },
-                "required": ["query"],
-            },
-        },
-    }
-]
-
 # ── LLM via Ollama ─────────────────────────────────────────────────────────────
 
 def llm_chat(model: str, messages: list) -> str:
-    """Chat with Ollama, executing any tool calls before returning final text."""
-    resp = ollama.chat(model=model, messages=messages, tools=TOOLS)
-
-    if not resp.message.tool_calls:
-        return resp.message.content or ""
-
-    # Add assistant turn (includes tool_calls)
-    followup = list(messages) + [resp.message]
-
-    for tc in resp.message.tool_calls:
-        if tc.function.name == "web_search":
-            q = tc.function.arguments.get("query", "")
-            print(f"  [web search: {q}]")
-            followup.append({"role": "tool", "tool_name": "web_search", "content": do_web_search(q)})
-
-    final = ollama.chat(model=model, messages=followup)
-    return final.message.content or ""
+    resp = ollama.chat(model=model, messages=messages)
+    return resp.message.content or ""
 
 # ── Conversation log ───────────────────────────────────────────────────────────
 
