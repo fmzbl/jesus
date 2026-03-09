@@ -396,6 +396,7 @@ class Jesus:
                 continue
 
             print("\r  [transcribing...]", end="", flush=True)
+            self.tts.beep(freq=440, duration=0.08)
             text = self.stt.transcribe(b"".join(frames))
             if text:
                 if beep:
@@ -469,6 +470,7 @@ class Jesus:
 
             if cancelled:
                 self.mic.drain()
+                self.say("ok I will stop")
                 continue
 
             if error_box[0]:
