@@ -423,7 +423,7 @@ class Jesus:
             self.say(f"you said {text}")
 
             if any(p in text for p in RESTART_PHRASES):
-                self.say("Sure, starting a new conversation.")
+                self.say("Ok, ill be here if you need me")
                 return True
 
             if any(p in text for p in END_PHRASES):
