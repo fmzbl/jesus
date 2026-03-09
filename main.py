@@ -3,7 +3,7 @@
 Jesus - Voice Assistant for Raspberry Pi
 
 Wake:         "Jesus start conversation"
-Stop reading: "stop"
+Stop reading: "jesus stop"
 End session:  "Jesus stop conversation"
 """
 
@@ -31,7 +31,7 @@ import ollama
 WAKE_PHRASES      = {"jesus"}
 END_PHRASES       = {"jesus stop"}
 RESTART_PHRASES   = {"jesus stop conversation"}
-STOP_WORD         = "stop"
+STOP_WORD         = "jesus stop"
 ENERGY_THRESHOLD  = 50     # RMS below this is treated as silence
 SILENCE_TIMEOUT   = 1.5    # seconds of silence after speech before forcing final result
 CONVERSATIONS_DIR = Path("conversations")
@@ -396,7 +396,8 @@ class Jesus:
                 continue
 
             print("\r  [transcribing...]", end="", flush=True)
-            self.tts.beep(freq=440, duration=0.08)
+            if beep:
+                self.tts.beep(freq=440, duration=0.08)
             text = self.stt.transcribe(b"".join(frames))
             if text:
                 if beep:
@@ -424,10 +425,10 @@ class Jesus:
                 return True
 
             if any(p in text for p in END_PHRASES):
-                self.say("Got it. I'll be here if you need me.")
+                self.say("ok ill be here if you need me")
                 return False
 
-            # Bare "stop" — user interrupted, don't send to LLM
+            # Bare "jesus stop" — user interrupted, don't send to LLM
             if text.strip() == STOP_WORD:
                 continue
 
@@ -491,8 +492,7 @@ class Jesus:
                 if any(p in text for p in WAKE_PHRASES):
                     self.tts.beep(freq=880, duration=0.12)
                     print("[wake phrase detected]")
-                    while self.converse():
-                        pass
+                    self.converse()
                     print("\nStandby — say 'Jesus'\n")
         except KeyboardInterrupt:
             print("\nShutting down.")
