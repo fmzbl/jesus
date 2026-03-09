@@ -403,7 +403,6 @@ class Jesus:
                 if beep:
                     self.tts.beep(freq=660, duration=0.12)
                 print(f"\r  You: {text}          ")
-                self.tts.speak(f"you said {text}")
                 return text
             print("\r  [didn't catch that, listening again...]", end="", flush=True)
             time.sleep(0.5)
@@ -420,6 +419,8 @@ class Jesus:
             text = self.listen()
             if not text:
                 continue
+
+            self.say(f"you said {text}")
 
             if any(p in text for p in RESTART_PHRASES):
                 self.say("Sure, starting a new conversation.")
