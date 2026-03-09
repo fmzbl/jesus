@@ -403,6 +403,7 @@ class Jesus:
                 if beep:
                     self.tts.beep(freq=660, duration=0.12)
                 print(f"\r  You: {text}          ")
+                self.tts.speak(f"you said {text}")
                 return text
             print("\r  [didn't catch that, listening again...]", end="", flush=True)
             time.sleep(0.5)
