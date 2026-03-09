@@ -254,7 +254,7 @@ class TTS:
         rate = 22050
         n = int(rate * duration)
         t = np.linspace(0, duration, n, endpoint=False)
-        data = (np.sin(2 * np.pi * freq * t) * 0.4 * 32767).astype(np.int16)
+        data = (np.sin(2 * np.pi * freq * t) * 0.9 * 32767).astype(np.int16)
         stream = self._pa.open(format=pyaudio.paInt16, channels=1, rate=rate, output=True)
         try:
             stream.write(data.tobytes())
@@ -397,11 +397,11 @@ class Jesus:
 
             print("\r  [transcribing...]", end="", flush=True)
             if beep:
-                self.tts.beep(freq=440, duration=0.08)
+                self.tts.beep(freq=880, duration=0.08)
             text = self.stt.transcribe(b"".join(frames))
             if text:
                 if beep:
-                    self.tts.beep(freq=660, duration=0.12)
+                    self.tts.beep(freq=880, duration=0.12)
                 print(f"\r  You: {text}          ")
                 return text
             print("\r  [didn't catch that, listening again...]", end="", flush=True)
