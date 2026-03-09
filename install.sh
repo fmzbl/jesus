@@ -13,6 +13,12 @@ else
     echo "Ollama already installed, skipping."
 fi
 
+echo "Starting Ollama service..."
+if ! pgrep -x ollama > /dev/null; then
+    ollama serve &>/dev/null &
+    sleep 2
+fi
+
 echo "Pulling Ollama model..."
 ollama pull llama3.2:3b
 
